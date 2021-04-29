@@ -21,8 +21,8 @@ public class pstMailExtractor {
 
         if(args.length>3){
             IsTimeParametersPassed =true;
-            lowerDate= new SimpleDateFormat("dd/MM/yyyy").parse(args[2]);
-            upperDate=new SimpleDateFormat("dd/MM/yyyy").parse(args[3]);
+            lowerDate= new SimpleDateFormat("yyyy-MM-dd").parse(args[2]);
+            upperDate=new SimpleDateFormat("yyyy-MM-dd").parse(args[3]);
             System.out.println("Lower Date"+lowerDate);
             System.out.println("Upper Date"+upperDate);
         }
@@ -36,11 +36,14 @@ public class pstMailExtractor {
         for (int i=0;i<emailList.size();i++){
             System.out.println(emailList.get(i));
         }
-        System.out.println(emailList.size());
         List<String> emailListWithoutDuplicates = emailList.stream().distinct().collect(Collectors.toList());
-        System.out.println(emailListWithoutDuplicates.size());
+        System.out.println("---------"+emailListWithoutDuplicates.size()+" mails extracted --------------");
+        writeEmailsToCSV(emailListWithoutDuplicates);
 
     }
+
+
+
     public static void readCsvFile(String csvFilePath) throws FileNotFoundException {
         Scanner sc = new Scanner(new File(csvFilePath));
         while (sc.hasNext())
@@ -48,11 +51,39 @@ public class pstMailExtractor {
             String email = sc.next();
             email=email.replaceAll("\"","");
             if(checkEmailIsTelenity(email)&&checkEmailFormat(email)) {
-                //System.out.println(email);
+                if(checkMoreThanOneEmail(email)){
+                    List<String> tempEmailList = preProcessMoreThanOneEmail(email);
+                    for(int i=0;i<tempEmailList.size();i++){
+                        System.out.println(tempEmailList.get(i));
+                        emailList.add(tempEmailList.get(i));
+                    }
+                }
+                else{
+                System.out.println(email);
                 emailList.add(email);
+                 }
             }
         }
         sc.close();
+    }
+
+    private static ArrayList<String> preProcessMoreThanOneEmail(String email) {
+        String[] tempEmailList = email.split(";");
+        ArrayList<String> emailList = new ArrayList<>();
+        for(int i=0;i<tempEmailList.length;i++){
+            if(checkEmailFormat(tempEmailList[i])) {
+                emailList.add(tempEmailList[i]);
+            }
+        }
+
+        return emailList;
+    }
+
+    private static boolean checkMoreThanOneEmail(String email) {
+        if(email.contains(";")){
+            return true;
+        }
+        return false;
     }
 
     public static void processFolder(PSTFolder folder)
@@ -73,10 +104,12 @@ public class pstMailExtractor {
                     if (IsTimeParametersPassed){
                         if(lowerDate.before(email.getLastModificationTime()) && upperDate.after(email.getLastModificationTime()))
                         {
-                            emailList.add(email.getSenderEmailAddress()+"From Time COndtion ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+                            System.out.println(email.getSenderEmailAddress());
+                            emailList.add(email.getSenderEmailAddress());
                         }
                     }
                     else {
+                        System.out.println(email.getSenderEmailAddress());
                         emailList.add(email.getSenderEmailAddress());
                     }
                 }
@@ -96,5 +129,11 @@ public class pstMailExtractor {
             return false;
         }
         return true;
+    }
+    private static void writeEmailsToCSV(List<String> emailListWithoutDuplicates) throws IOException {
+        FileWriter writer = new FileWriter("extractedMails.csv");
+        String collect = emailListWithoutDuplicates.stream().collect(Collectors.joining("\n"));
+        writer.write(collect);
+        writer.close();
     }
 }
